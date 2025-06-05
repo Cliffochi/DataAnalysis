@@ -1,0 +1,83 @@
+CREATE TABLE regional_emissions(
+	Industry_Type VARCHAR(25),
+	Region VARCHAR(25),	
+	Country VARCHAR(25),	
+	Year INTEGER,	
+	Co2_Emissions_MetricTons FLOAT,	
+	Energy_Consumption_TWh FLOAT,	
+	Automobile_Co2_Emissions_MetricTons FLOAT,	
+	Industrial_Co2_Emissions_MetricTons FLOAT,	
+	Agriculture_Co2_Emissions_MetricTons FLOAT,	
+	Domestic_Co2_Emissions_MetricTons FLOAT,	
+	Population_Millions FLOAT,	
+	GDP_Billion_USD FLOAT,	
+	Urbanization_Percentage FLOAT,	
+	Renewable_Energy_Percentage FLOAT,	
+	Industrial_Growth_Percentage FLOAT,	
+	Transport_Growth_Percentage FLOAT
+	);
+
+SELECT *
+FROM regional_emissions;
+
+-- 1. Which industry had the highest total CO₂ emissions in the most recent year?
+SELECT Industry_Type, SUM(Co2_Emissions_MetricTons) AS Total_Emissions
+FROM regional_emissions
+WHERE Year = (SELECT MAX(Year) FROM regional_emissions)
+GROUP BY Industry_Type
+ORDER BY Total_Emissions DESC
+LIMIT 1;
+
+-- updated tale to create randon year dates between 1905-2020 for the year column that had only 1905
+UPDATE regional_emissions
+SET Year = FLOOR(RANDOM() * (2020 - 2000 + 1)) + 2000;
+
+-- 2. What has been the trend of total emissions across all sectors over the last 10 years?
+SELECT Year, SUM(Co2_Emissions_MetricTons) AS Total_Emissions
+FROM regional_emissions
+--WHERE Year <= (2020 - 10)
+WHERE Year >= EXTRACT(YEAR FROM CURRENT_DATE) - 10
+GROUP BY Year
+ORDER BY Year;
+
+-- 3. Which industries have shown a consistent decline in emissions from 2013 to 2023?
+SELECT Industry_Type
+FROM regional_emissions
+WHERE Year BETWEEN 2013 AND 2023
+GROUP BY Industry_Type
+HAVING SUM(CASE WHEN Year = 2013 THEN Co2_Emissions_MetricTons ELSE 0 END) >
+       SUM(CASE WHEN Year = 2023 THEN Co2_Emissions_MetricTons ELSE 0 END);
+
+-- 4. How do emissions differ across regions?
+SELECT Region, SUM(Co2_Emissions_MetricTons) AS Total_Emissions
+FROM regional_emissions
+GROUP BY Region
+ORDER BY Total_Emissions DESC;
+
+-- 5. Top 3 emittiong industries and their year-wise emission patterns
+WITH TopIndustries AS (
+	SELECT Industry_Type
+	FROM regional_emissions
+	GROUP BY Industry_Type
+	ORDER BY SUM(Co2_Emissions_MetricTons) DESC
+	Limit 3
+	)
+SELECT r.Year, r.Industry_Type, SUM(r.Co2_Emissions_MetricTons) AS Total_Emissions
+FROM regional_emissions r
+JOIN TopIndustries t ON r.Industry_Type = t.Industry_Type
+GROUP BY r.Year, r.Industry_Type
+ORDER BY r.Industry_Type, r.Year;
+
+-- 6. Which countries have the highest renewable energy percentage and lowest emissions per capita?
+SELECT Country,
+	AVG(Renewable_Energy_Percentage) AS Avg_Renewable,
+	AVG(Co2_Emissions_MetricTons/Population_Millions) AS Emissions_Per_Capita
+FROM regional_emissions
+GROUP BY Country
+ORDER BY Avg_Renewable DESC, Emissions_Per_Capita ASC
+LIMIT 10;
+
+-- 7. Is there a relationship between GDP and emissions?
+SELECT gdp_billion_usd, co2_emissions_metricTons
+FROM regional_emissions
+WHERE gdp_billion_usd IS NOT NULL AND co2_emissions_metricTons IS NOT NULL;
